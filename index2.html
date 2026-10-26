@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PICU面会状況</title>
+
+  <style>
+    body {
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN',
+                   'Hiragino Sans', Meiryo, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f4f7f6;
+      color: #333;
+    }
+
+    .container {
+      max-width: 700px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    h1 {
+      margin-bottom: 30px;
+    }
+
+    .status-box {
+      padding: 25px;
+      border-radius: 12px;
+      margin-bottom: 30px;
+    }
+
+    .ok {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+    }
+
+    .ng {
+      background-color: #ffebee;
+      color: #c62828;
+    }
+
+    .loading {
+      background-color: #eeeeee;
+      color: #666;
+    }
+
+    #main-status {
+      font-size: 2.5em;
+      font-weight: bold;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+
+    /* ★左詰めに変更 */
+    #detail-message {
+      font-size: 1.2em;
+      line-height: 1.8;
+      margin-bottom: 15px;
+      text-align: left;
+      white-space: pre-wrap;
+    }
+
+    #update-time {
+      font-size: 0.9em;
+      color: #666;
+      text-align: center;
+    }
+
+    .bbs-container {
+      margin-top: 40px;
+      border-top: 1px solid #ddd;
+      padding-top: 20px;
+      text-align: center;
+    }
+
+    .bbs-item {
+      margin-bottom: 25px;
+    }
+
+    .bbs-time {
+      font-size: 0.85em;
+      color: #888;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    /* ★左詰めに変更 */
+    .bbs-content {
+      font-size: 1em;
+      line-height: 1.8;
+      text-align: left;
+      white-space: pre-wrap;
+    }
+
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <h1>PICU面会状況</h1>
+
+    <div id="status-area" class="status-box loading">
+
+      <div id="main-status">
+        読み込み中...
+      </div>
+
+      <div id="detail-message"></div>
+
+      <div id="update-time"></div>
+
+    </div>
+
+    <div class="bbs-container">
+
+      <h2>お知らせ</h2>
+
+      <div id="bbs-list"></div>
+
+    </div>
+
+  </div>
+
+  <script>
+
+    // GASのWebアプリURL
+    const GAS_URL =
+      "https://script.google.com/macros/s/AKfycbwPrxIeBo1lKulI1MSd_ukPOWYnkAErv1fN5g_WAGS8mM1jGbnfFbmVXPL5sv_xKFqVXw/exec";
+
+    async function loadData() {
+
+      try {
+
+        console.log("データ取得開始");
+
+        const response = await fetch(GAS_URL);
+
+        if (!response.ok) {
+          throw new Error("HTTPエラー: " + response.status);
+        }
+
+        const data = await response.json();
+
+        console.log("取得データ:", data);
+
+        // HTML要素取得
+        const statusArea = document.getElementById("status-area");
+        const mainStatus = document.getElementById("main-status");
+        const detailMessage = document.getElementById("detail-message");
+        const updateTime = document.getElementById("update-time");
+        const bbsList = document.getElementById("bbs-list");
+
+        // 面会状況
+        mainStatus.textContent = data.status.mainStatus || "不明";
+
+        detailMessage.textContent = data.status.detail || "";
+
+        updateTime.textContent =
+          "最終更新: " + (data.status.updateTime || "---");
+
+        // 色変更
+        statusArea.classList.remove("loading", "ok", "ng");
+
+        if (data.status.mainStatus === "面会可能") {
+          statusArea.classList.add("ok");
+        } else {
+          statusArea.classList.add("ng");
+        }
+
+        // お知らせ
+        bbsList.innerHTML = "";
+
+        if (data.bbs && data.bbs.length > 0) {
+
+          data.bbs.forEach(item => {
+
+            const div = document.createElement("div");
+            div.className = "bbs-item";
+
+            div.innerHTML = `
+              <div class="bbs-time">${item.time}</div>
+              <div class="bbs-content">${item.content}</div>
+            `;
+
+            bbsList.appendChild(div);
+
+          });
+
+        } else {
+
+          bbsList.innerHTML = "<p>現在お知らせはありません</p>";
+
+        }
+
+      } catch (error) {
+
+        console.error("エラー:", error);
+
+        const statusArea = document.getElementById("status-area");
+
+        statusArea.classList.remove("loading");
+        statusArea.classList.add("ng");
+
+        document.getElementById("main-status").textContent =
+          "通信エラー";
+
+        document.getElementById("detail-message").textContent =
+          error.toString();
+
+      }
+
+    }
+
+    // 初回読み込み
+    loadData();
+
+    // 30秒ごとに自動更新
+    setInterval(loadData, 30000);
+
+  </script>
+
+</body>
+</html>
